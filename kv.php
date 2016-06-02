@@ -31,7 +31,7 @@ class KvItem {
     }
 
     function isValid() {
-        return $this->version == -1;
+        return $this->version != -1;
     }
 }
 ?>

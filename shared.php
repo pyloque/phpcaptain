@@ -82,7 +82,7 @@ class SharedMemory {
         return $bytes;
     }
 
-    function readService($name, $slot) {
+    function readService($name, $slot, $last_version) {
         $set = new ServiceSet($name);
         $block = $this->readInt(self::$SERVICE_HEADER_OFFSET + $slot * 4);
         if($block == self::$MAX_SERVICES) {
@@ -90,6 +90,10 @@ class SharedMemory {
         }
         $offset = self::$SERVICE_HEADER_OFFSET + self::$SERVICE_HEADER_SIZE + $block * self::$MAX_SERVICE_RECORD_SIZE;
         $version = $this->readLong($offset);
+        if($version == $last_version) {
+            // version not changed
+            return $set;
+        }
         $content = $this->readStr($offset + 8);
         if(!is_null($content)) {
             $pairs = explode(',', $content);
@@ -105,7 +109,7 @@ class SharedMemory {
         return $set;
     }
 
-    function readKv($key, $slot) {
+    function readKv($key, $slot, $last_version) {
         $kv = new KvItem($key);
         $block = $this->readInt(self::$KV_HEADER_OFFSET + $slot * 4);
         if($block == self::$MAX_KVS) {
@@ -113,6 +117,10 @@ class SharedMemory {
         }
         $offset = self::$KV_HEADER_SIZE + self::$KV_HEADER_OFFSET + $block * self::$MAX_KV_RECORD_SIZE;
         $version = $this->readLong($offset);
+        if($version == $last_version) {
+            // version not changed
+            return $kv;
+        }
         $content = $this->readStr($offset + 8);
         $value = json_decode($content, true);
         $kv->setValue($value);

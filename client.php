@@ -11,6 +11,8 @@ class CaptainClient {
     private $kvSlots;
     private $shared;
     private $currentAgent;
+    private $recentKvs;
+    private $recentServices;
 
     function __construct($agents, $shmfile) {
         $this->agents = $agents;
@@ -98,15 +100,25 @@ class CaptainClient {
         if(is_null($slot)) {
             throw new CaptainException("no such service:" . $name); 
         }
-        $set = $this->shared->readService($name, $slot);
+        $last_version = -1;
+        $last_set = NULL;
+        if(array_key_exists($name, $this->recentServices)) {
+            $last_set = $this->recentServices[$name];
+            $last_version = $last_set->getVersion();
+        }
+        $set = $this->shared->readService($name, $slot, $last_version);
         if($set->isValid()) {
             $this->currentAgent->setProbe(ServiceItem::DEFAULT_SERVICE_PROBE);
-        } else {
-            if($this->currentAgent->getProbe() > 1) {
-                $this->currentAgent->setProbe($this->currentAgent->getProbe() >> 1);
-            }
+            $this->recentServices[$name] = $set;
+            return $set->randomItem();
         }
-        return $set->randomItem();
+        if($this->currentAgent->getProbe() > 1) {
+            $this->currentAgent->setProbe($this->currentAgent->getProbe() >> 1);
+        }
+        if(!is_null($last_set)) {
+            return $last_set->randomItem();
+        }
+        return NULL;
     }
 
     function kv($key) {
@@ -115,15 +127,25 @@ class CaptainClient {
         if(is_null($slot)) {
             throw new CaptainException("no such kv:" . $key); 
         }
-        $kv = $this->shared->readKv($key, $slot);
+        $last_version = -1;
+        $last_kv = NULL;
+        if(array_key_exists($key, $this->recentKvs)) {
+            $last_kv = $this->recentKvs[$key];
+            $last_version = $last_kv->getVersion();
+        }
+        $kv = $this->shared->readKv($key, $slot, $last_version);
         if($kv->isValid()) {
             $this->currentAgent->setProbe(ServiceItem::DEFAULT_SERVICE_PROBE);
-        } else {
-            if($this->currentAgent->getProbe() > 1) {
-                $this->currentAgent->setProbe($this->currentAgent->getProbe() >> 1);
-            }
+            $this->recentKvs[$key] = $kv;
+            return $kv->getValue();
         }
-        return $kv->getValue();
+        if($this->currentAgent->getProbe() > 1) {
+            $this->currentAgent->setProbe($this->currentAgent->getProbe() >> 1);
+        }
+        if(!is_null($last_kv)) {
+            return $last_kv->getValue();
+        }
+        return NULL;
     }
 
 }
