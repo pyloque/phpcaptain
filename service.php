@@ -73,7 +73,7 @@ class ServiceSet {
     }
 
     function isValid() {
-        return this.version != -1;
+        return $this->version != -1;
     }
 
     function randomItem() {
